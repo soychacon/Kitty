@@ -1,341 +1,262 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2761
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-
-\f0\fs24 \cf0 <!DOCTYPE html>\
-<html lang="en">\
-<head>\
-<meta charset="UTF-8">\
-<title>Cat</title>\
-<style>\
-  * \{ margin: 0; padding: 0; box-sizing: border-box; \}\
-  body \{\
-    background: #87CEEB;\
-    overflow: hidden;\
-    height: 100vh;\
-    display: flex;\
-    align-items: center;\
-    justify-content: center;\
-  \}\
-  canvas \{\
-    display: block;\
-    border-radius: 16px;\
-    box-shadow: 0 8px 40px rgba(0,0,0,0.25);\
-  \}\
-</style>\
-</head>\
-<body>\
-<canvas id="c"></canvas>\
-<script>\
-const canvas = document.getElementById('c');\
-const ctx = canvas.getContext('2d');\
-\
-const W = Math.min(window.innerWidth - 20, 800);\
-const H = Math.min(window.innerHeight - 20, 420);\
-canvas.width = W;\
-canvas.height = H;\
-\
-const GROUND = H * 0.78;\
-\
-// Polyfill roundRect\
-if (!CanvasRenderingContext2D.prototype.roundRect) \{\
-  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) \{\
-    r = Math.min(r, w/2, h/2);\
-    this.beginPath();\
-    this.moveTo(x + r, y);\
-    this.lineTo(x + w - r, y);\
-    this.quadraticCurveTo(x + w, y, x + w, y + r);\
-    this.lineTo(x + w, y + h - r);\
-    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);\
-    this.lineTo(x + r, y + h);\
-    this.quadraticCurveTo(x, y + h, x, y + h - r);\
-    this.lineTo(x, y + r);\
-    this.quadraticCurveTo(x, y, x + r, y);\
-    this.closePath();\
-    return this;\
-  \};\
-\}\
-\
-// CAT\
-let cat = \{ x: 100, dir: 1, speed: 2.2, frame: 0, tick: 0, bodyW: 72, bodyH: 48 \};\
-\
-// BALL\
-let ball = \{ x: 300, y: GROUND - 18, vx: 3.5, vy: 0, r: 18 \};\
-const GRAVITY = 0.42, BOUNCE = 0.52;\
-\
-function drawBg() \{\
-  const sky = ctx.createLinearGradient(0, 0, 0, GROUND);\
-  sky.addColorStop(0, '#4a90c8');\
-  sky.addColorStop(1, '#b8dff5');\
-  ctx.fillStyle = sky;\
-  ctx.fillRect(0, 0, W, H);\
-\
-  // Sun\
-  ctx.save();\
-  ctx.fillStyle = '#ffe066';\
-  ctx.shadowColor = '#ffe566';\
-  ctx.shadowBlur = 35;\
-  ctx.beginPath();\
-  ctx.arc(W - 80, 65, 38, 0, Math.PI * 2);\
-  ctx.fill();\
-  ctx.restore();\
-\
-  // Clouds\
-  drawCloud(100, 65, 1.0);\
-  drawCloud(360, 50, 1.2);\
-  drawCloud(610, 80, 0.85);\
-\
-  // Grass\
-  const grass = ctx.createLinearGradient(0, GROUND, 0, H);\
-  grass.addColorStop(0, '#6bc96b');\
-  grass.addColorStop(0.4, '#4a9a4a');\
-  grass.addColorStop(1, '#376a37');\
-  ctx.fillStyle = grass;\
-  ctx.beginPath();\
-  ctx.moveTo(0, GROUND);\
-  ctx.lineTo(W, GROUND);\
-  ctx.lineTo(W, H);\
-  ctx.lineTo(0, H);\
-  ctx.fill();\
-\
-  // Grass highlight strip\
-  ctx.fillStyle = '#80d880';\
-  ctx.fillRect(0, GROUND, W, 5);\
-\}\
-\
-function drawCloud(x, y, s) \{\
-  ctx.save();\
-  ctx.fillStyle = 'rgba(255,255,255,0.88)';\
-  ctx.beginPath();\
-  ctx.arc(x, y, 28*s, 0, Math.PI*2);\
-  ctx.arc(x+32*s, y-10*s, 22*s, 0, Math.PI*2);\
-  ctx.arc(x+58*s, y, 26*s, 0, Math.PI*2);\
-  ctx.arc(x+28*s, y+10*s, 22*s, 0, Math.PI*2);\
-  ctx.fill();\
-  ctx.restore();\
-\}\
-\
-function drawBall() \{\
-  const \{ x, y, r \} = ball;\
-\
-  // Ground shadow\
-  const shadowW = r * Math.max(0.2, 1 - (GROUND - y - r) / (GROUND * 0.6));\
-  ctx.save();\
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';\
-  ctx.beginPath();\
-  ctx.ellipse(x, GROUND + 4, shadowW, 5, 0, 0, Math.PI*2);\
-  ctx.fill();\
-  ctx.restore();\
-\
-  // Ball\
-  const g = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.05, x, y, r);\
-  g.addColorStop(0, '#ff9dc0');\
-  g.addColorStop(0.55, '#e8325f');\
-  g.addColorStop(1, '#a01040');\
-  ctx.fillStyle = g;\
-  ctx.beginPath();\
-  ctx.arc(x, y, r, 0, Math.PI*2);\
-  ctx.fill();\
-\
-  // Yarn lines\
-  ctx.save();\
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';\
-  ctx.lineWidth = 1.5;\
-  ctx.beginPath();\
-  ctx.arc(x, y, r*0.6, 0.4, 0.4 + Math.PI*1.1);\
-  ctx.stroke();\
-  ctx.beginPath();\
-  ctx.arc(x, y, r*0.85, -0.3, -0.3 + Math.PI*1.3);\
-  ctx.stroke();\
-  ctx.restore();\
-\
-  // Shine\
-  ctx.save();\
-  ctx.fillStyle = 'rgba(255,255,255,0.38)';\
-  ctx.beginPath();\
-  ctx.ellipse(x - r*0.28, y - r*0.32, r*0.22, r*0.14, -0.5, 0, Math.PI*2);\
-  ctx.fill();\
-  ctx.restore();\
-\}\
-\
-function drawCat(cx, dir, frame) \{\
-  const y = GROUND;\
-  const bw = cat.bodyW, bh = cat.bodyH;\
-  const bodyTop = y - bh - 18;\
-\
-  ctx.save();\
-  const mid = cx + bw / 2;\
-  ctx.translate(mid, 0);\
-  if (dir === -1) ctx.scale(-1, 1);\
-  ctx.translate(-mid, 0);\
-\
-  const legSwing = Math.sin(frame * Math.PI / 2) * 9;\
-\
-  // Shadow\
-  ctx.fillStyle = 'rgba(0,0,0,0.14)';\
-  ctx.beginPath();\
-  ctx.ellipse(cx + bw/2, y + 3, bw*0.52, 7, 0, 0, Math.PI*2);\
-  ctx.fill();\
-\
-  // Tail\
-  ctx.save();\
-  ctx.strokeStyle = '#e09030';\
-  ctx.lineWidth = 8;\
-  ctx.lineCap = 'round';\
-  const tw = Math.sin(frame * Math.PI / 2) * 18;\
-  ctx.beginPath();\
-  ctx.moveTo(cx + 6, bodyTop + bh * 0.55);\
-  ctx.bezierCurveTo(cx - 22, bodyTop + bh*0.1 + tw, cx - 32, bodyTop - 18 + tw, cx - 8, bodyTop - 32 + tw);\
-  ctx.stroke();\
-  ctx.strokeStyle = '#ffeeca';\
-  ctx.lineWidth = 4;\
-  ctx.beginPath();\
-  ctx.moveTo(cx - 16, bodyTop - 16 + tw);\
-  ctx.bezierCurveTo(cx - 34, bodyTop - 24 + tw, cx - 14, bodyTop - 40 + tw, cx - 8, bodyTop - 32 + tw);\
-  ctx.stroke();\
-  ctx.restore();\
-\
-  // Back legs\
-  ctx.fillStyle = '#e09030';\
-  ctx.beginPath(); ctx.roundRect(cx + 8, bodyTop + bh - 5, 13, 17 - legSwing, 6); ctx.fill();\
-  ctx.beginPath(); ctx.roundRect(cx + 6, bodyTop + bh + 11 - legSwing, 17, 8, 5); ctx.fill();\
-  ctx.beginPath(); ctx.roundRect(cx + 48, bodyTop + bh - 5, 13, 17 + legSwing, 6); ctx.fill();\
-  ctx.beginPath(); ctx.roundRect(cx + 46, bodyTop + bh + 11 + legSwing, 17, 8, 5); ctx.fill();\
-\
-  // Body\
-  const bg = ctx.createLinearGradient(cx, bodyTop, cx + bw, bodyTop + bh);\
-  bg.addColorStop(0, '#f7c055');\
-  bg.addColorStop(1, '#e09030');\
-  ctx.fillStyle = bg;\
-  ctx.beginPath();\
-  ctx.roundRect(cx + 2, bodyTop, bw - 4, bh, 22);\
-  ctx.fill();\
-\
-  // Belly\
-  ctx.fillStyle = '#fff4d8';\
-  ctx.beginPath();\
-  ctx.ellipse(cx + bw/2, bodyTop + bh*0.65, 17, 13, 0, 0, Math.PI*2);\
-  ctx.fill();\
-\
-  // Stripes\
-  ctx.strokeStyle = 'rgba(170,90,0,0.28)';\
-  ctx.lineWidth = 3; ctx.lineCap = 'round';\
-  for (let s = 0; s < 3; s++) \{\
-    ctx.beginPath();\
-    ctx.moveTo(cx + 16 + s*11, bodyTop + 5);\
-    ctx.lineTo(cx + 14 + s*11, bodyTop + 22);\
-    ctx.stroke();\
-  \}\
-\
-  // Front legs\
-  ctx.fillStyle = '#f7c055';\
-  ctx.beginPath(); ctx.roundRect(cx + 13, bodyTop + bh - 3, 12, 15 + legSwing, 6); ctx.fill();\
-  ctx.beginPath(); ctx.roundRect(cx + 11, bodyTop + bh + 11 + legSwing, 16, 8, 5); ctx.fill();\
-  ctx.beginPath(); ctx.roundRect(cx + 44, bodyTop + bh - 3, 12, 15 - legSwing, 6); ctx.fill();\
-  ctx.beginPath(); ctx.roundRect(cx + 42, bodyTop + bh + 11 - legSwing, 16, 8, 5); ctx.fill();\
-\
-  // HEAD\
-  const hx = cx + bw * 0.55, hy = bodyTop - 4, hr = 27;\
-  const hg = ctx.createRadialGradient(hx - 6, hy - 6, 4, hx, hy, hr);\
-  hg.addColorStop(0, '#fac860');\
-  hg.addColorStop(1, '#e09030');\
-  ctx.fillStyle = hg;\
-  ctx.beginPath();\
-  ctx.arc(hx, hy, hr, 0, Math.PI*2);\
-  ctx.fill();\
-\
-  // Ears\
-  ctx.fillStyle = '#e09030';\
-  ctx.beginPath(); ctx.moveTo(hx-18, hy-18); ctx.lineTo(hx-26, hy-40); ctx.lineTo(hx-4, hy-24); ctx.closePath(); ctx.fill();\
-  ctx.fillStyle = '#ffb5c8';\
-  ctx.beginPath(); ctx.moveTo(hx-16, hy-20); ctx.lineTo(hx-22, hy-35); ctx.lineTo(hx-7, hy-25); ctx.closePath(); ctx.fill();\
-  ctx.fillStyle = '#e09030';\
-  ctx.beginPath(); ctx.moveTo(hx+12, hy-20); ctx.lineTo(hx+24, hy-42); ctx.lineTo(hx+25, hy-20); ctx.closePath(); ctx.fill();\
-  ctx.fillStyle = '#ffb5c8';\
-  ctx.beginPath(); ctx.moveTo(hx+13, hy-21); ctx.lineTo(hx+22, hy-36); ctx.lineTo(hx+23, hy-21); ctx.closePath(); ctx.fill();\
-\
-  // Eyes\
-  ctx.fillStyle = '#1a9e54';\
-  ctx.beginPath(); ctx.ellipse(hx-11, hy-3, 7, 8, 0, 0, Math.PI*2); ctx.fill();\
-  ctx.beginPath(); ctx.ellipse(hx+11, hy-3, 7, 8, 0, 0, Math.PI*2); ctx.fill();\
-  ctx.fillStyle = '#111';\
-  ctx.beginPath(); ctx.ellipse(hx-11, hy-3, 3, 7, 0, 0, Math.PI*2); ctx.fill();\
-  ctx.beginPath(); ctx.ellipse(hx+11, hy-3, 3, 7, 0, 0, Math.PI*2); ctx.fill();\
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';\
-  ctx.beginPath(); ctx.arc(hx-8, hy-6, 2.5, 0, Math.PI*2); ctx.fill();\
-  ctx.beginPath(); ctx.arc(hx+13, hy-6, 2.5, 0, Math.PI*2); ctx.fill();\
-\
-  // Nose\
-  ctx.fillStyle = '#ff9eb5';\
-  ctx.beginPath(); ctx.moveTo(hx, hy+5); ctx.lineTo(hx-4, hy+1); ctx.lineTo(hx+4, hy+1); ctx.closePath(); ctx.fill();\
-\
-  // Mouth\
-  ctx.strokeStyle = '#b85050';\
-  ctx.lineWidth = 1.8; ctx.lineCap = 'round';\
-  ctx.beginPath(); ctx.moveTo(hx, hy+5); ctx.quadraticCurveTo(hx-7, hy+12, hx-6, hy+11); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx, hy+5); ctx.quadraticCurveTo(hx+7, hy+12, hx+6, hy+11); ctx.stroke();\
-\
-  // Whiskers\
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';\
-  ctx.lineWidth = 1.2;\
-  ctx.beginPath(); ctx.moveTo(hx-5,hy+3); ctx.lineTo(hx-30,hy+0); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx-5,hy+6); ctx.lineTo(hx-30,hy+7); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx-5,hy+8); ctx.lineTo(hx-28,hy+13); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx+5,hy+3); ctx.lineTo(hx+30,hy+0); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx+5,hy+6); ctx.lineTo(hx+30,hy+7); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx+5,hy+8); ctx.lineTo(hx+28,hy+13); ctx.stroke();\
-\
-  // Forehead stripes\
-  ctx.strokeStyle = 'rgba(160,85,0,0.3)';\
-  ctx.lineWidth = 2.5; ctx.lineCap = 'round';\
-  ctx.beginPath(); ctx.moveTo(hx-9,hy-26); ctx.quadraticCurveTo(hx-7,hy-18,hx-8,hy-12); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx,hy-28); ctx.quadraticCurveTo(hx,hy-18,hx,hy-12); ctx.stroke();\
-  ctx.beginPath(); ctx.moveTo(hx+9,hy-26); ctx.quadraticCurveTo(hx+7,hy-18,hx+8,hy-12); ctx.stroke();\
-\
-  ctx.restore();\
-\}\
-\
-function update() \{\
-  cat.x += cat.speed * cat.dir;\
-  if (cat.x > W - cat.bodyW - 50) cat.dir = -1;\
-  if (cat.x < 20) cat.dir = 1;\
-\
-  cat.tick++;\
-  if (cat.tick >= 8) \{ cat.tick = 0; cat.frame = (cat.frame + 1) % 4; \}\
-\
-  ball.vy += GRAVITY;\
-  ball.x += ball.vx;\
-  ball.y += ball.vy;\
-\
-  if (ball.y >= GROUND - ball.r) \{\
-    ball.y = GROUND - ball.r;\
-    ball.vy *= -BOUNCE;\
-    if (Math.abs(ball.vy) < 1) ball.vy = 0;\
-  \}\
-  if (ball.x - ball.r <= 0) \{ ball.x = ball.r; ball.vx *= -1; \}\
-  if (ball.x + ball.r >= W) \{ ball.x = W - ball.r; ball.vx *= -1; \}\
-\
-  // Cat bats ball\
-  const pawX = cat.x + cat.bodyW/2 + cat.dir * 38;\
-  if (Math.abs(pawX - ball.x) < 38 && ball.y > GROUND - 90) \{\
-    ball.vx = cat.dir * (4 + Math.random() * 3);\
-    ball.vy = -(3.5 + Math.random() * 3);\
-  \}\
-\}\
-\
-function loop() \{\
-  update();\
-  ctx.clearRect(0, 0, W, H);\
-  drawBg();\
-  drawBall();\
-  drawCat(cat.x, cat.dir, cat.frame);\
-  requestAnimationFrame(loop);\
-\}\
-\
-loop();\
-</script>\
-</body>\
-</html>}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cat</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #87CEEB;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas {
+    display: block;
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = Math.min(window.innerWidth - 20, 800);
+const H = Math.min(window.innerHeight - 20, 420);
+canvas.width = W;
+canvas.height = H;
+const GROUND = H * 0.78;
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    r = Math.min(r, w/2, h/2);
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.lineTo(x + w - r, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.lineTo(x + w, y + h - r);
+    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.lineTo(x + r, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.lineTo(x, y + r);
+    this.quadraticCurveTo(x, y, x + r, y);
+    this.closePath();
+    return this;
+  };
+}
+let cat = { x: 100, dir: 1, speed: 2.2, frame: 0, tick: 0, bodyW: 72, bodyH: 48 };
+let ball = { x: 300, y: GROUND - 18, vx: 3.5, vy: 0, r: 18 };
+const GRAVITY = 0.42, BOUNCE = 0.52;
+function drawBg() {
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+  sky.addColorStop(0, '#4a90c8');
+  sky.addColorStop(1, '#b8dff5');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.fillStyle = '#ffe066';
+  ctx.shadowColor = '#ffe566';
+  ctx.shadowBlur = 35;
+  ctx.beginPath();
+  ctx.arc(W - 80, 65, 38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  drawCloud(100, 65, 1.0);
+  drawCloud(360, 50, 1.2);
+  drawCloud(610, 80, 0.85);
+  const grass = ctx.createLinearGradient(0, GROUND, 0, H);
+  grass.addColorStop(0, '#6bc96b');
+  grass.addColorStop(0.4, '#4a9a4a');
+  grass.addColorStop(1, '#376a37');
+  ctx.fillStyle = grass;
+  ctx.fillRect(0, GROUND, W, H);
+  ctx.fillStyle = '#80d880';
+  ctx.fillRect(0, GROUND, W, 5);
+}
+function drawCloud(x, y, s) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.beginPath();
+  ctx.arc(x, y, 28*s, 0, Math.PI*2);
+  ctx.arc(x+32*s, y-10*s, 22*s, 0, Math.PI*2);
+  ctx.arc(x+58*s, y, 26*s, 0, Math.PI*2);
+  ctx.arc(x+28*s, y+10*s, 22*s, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+function drawBall() {
+  const { x, y, r } = ball;
+  const shadowW = r * Math.max(0.2, 1 - (GROUND - y - r) / (GROUND * 0.6));
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(x, GROUND + 4, shadowW, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+  const g = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.05, x, y, r);
+  g.addColorStop(0, '#ff9dc0');
+  g.addColorStop(0.55, '#e8325f');
+  g.addColorStop(1, '#a01040');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, r*0.6, 0.4, 0.4 + Math.PI*1.1);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, r*0.85, -0.3, -0.3 + Math.PI*1.3);
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.38)';
+  ctx.beginPath();
+  ctx.ellipse(x - r*0.28, y - r*0.32, r*0.22, r*0.14, -0.5, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+function drawCat(cx, dir, frame) {
+  const y = GROUND;
+  const bw = cat.bodyW, bh = cat.bodyH;
+  const bodyTop = y - bh - 18;
+  ctx.save();
+  const mid = cx + bw / 2;
+  ctx.translate(mid, 0);
+  if (dir === -1) ctx.scale(-1, 1);
+  ctx.translate(-mid, 0);
+  const legSwing = Math.sin(frame * Math.PI / 2) * 9;
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.beginPath();
+  ctx.ellipse(cx + bw/2, y + 3, bw*0.52, 7, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.save();
+  ctx.strokeStyle = '#e09030';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  const tw = Math.sin(frame * Math.PI / 2) * 18;
+  ctx.beginPath();
+  ctx.moveTo(cx + 6, bodyTop + bh * 0.55);
+  ctx.bezierCurveTo(cx - 22, bodyTop + bh*0.1 + tw, cx - 32, bodyTop - 18 + tw, cx - 8, bodyTop - 32 + tw);
+  ctx.stroke();
+  ctx.strokeStyle = '#ffeeca';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(cx - 16, bodyTop - 16 + tw);
+  ctx.bezierCurveTo(cx - 34, bodyTop - 24 + tw, cx - 14, bodyTop - 40 + tw, cx - 8, bodyTop - 32 + tw);
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#e09030';
+  ctx.beginPath(); ctx.roundRect(cx + 8, bodyTop + bh - 5, 13, 17 - legSwing, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + 6, bodyTop + bh + 11 - legSwing, 17, 8, 5); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + 48, bodyTop + bh - 5, 13, 17 + legSwing, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + 46, bodyTop + bh + 11 + legSwing, 17, 8, 5); ctx.fill();
+  const bg = ctx.createLinearGradient(cx, bodyTop, cx + bw, bodyTop + bh);
+  bg.addColorStop(0, '#f7c055');
+  bg.addColorStop(1, '#e09030');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.roundRect(cx + 2, bodyTop, bw - 4, bh, 22);
+  ctx.fill();
+  ctx.fillStyle = '#fff4d8';
+  ctx.beginPath();
+  ctx.ellipse(cx + bw/2, bodyTop + bh*0.65, 17, 13, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(170,90,0,0.28)';
+  ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (let s = 0; s < 3; s++) {
+    ctx.beginPath();
+    ctx.moveTo(cx + 16 + s*11, bodyTop + 5);
+    ctx.lineTo(cx + 14 + s*11, bodyTop + 22);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#f7c055';
+  ctx.beginPath(); ctx.roundRect(cx + 13, bodyTop + bh - 3, 12, 15 + legSwing, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + 11, bodyTop + bh + 11 + legSwing, 16, 8, 5); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + 44, bodyTop + bh - 3, 12, 15 - legSwing, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + 42, bodyTop + bh + 11 - legSwing, 16, 8, 5); ctx.fill();
+  const hx = cx + bw * 0.55, hy = bodyTop - 4, hr = 27;
+  const hg = ctx.createRadialGradient(hx - 6, hy - 6, 4, hx, hy, hr);
+  hg.addColorStop(0, '#fac860');
+  hg.addColorStop(1, '#e09030');
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.arc(hx, hy, hr, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#e09030';
+  ctx.beginPath(); ctx.moveTo(hx-18, hy-18); ctx.lineTo(hx-26, hy-40); ctx.lineTo(hx-4, hy-24); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffb5c8';
+  ctx.beginPath(); ctx.moveTo(hx-16, hy-20); ctx.lineTo(hx-22, hy-35); ctx.lineTo(hx-7, hy-25); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#e09030';
+  ctx.beginPath(); ctx.moveTo(hx+12, hy-20); ctx.lineTo(hx+24, hy-42); ctx.lineTo(hx+25, hy-20); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffb5c8';
+  ctx.beginPath(); ctx.moveTo(hx+13, hy-21); ctx.lineTo(hx+22, hy-36); ctx.lineTo(hx+23, hy-21); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#1a9e54';
+  ctx.beginPath(); ctx.ellipse(hx-11, hy-3, 7, 8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx+11, hy-3, 7, 8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.ellipse(hx-11, hy-3, 3, 7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx+11, hy-3, 3, 7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.beginPath(); ctx.arc(hx-8, hy-6, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx+13, hy-6, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ff9eb5';
+  ctx.beginPath(); ctx.moveTo(hx, hy+5); ctx.lineTo(hx-4, hy+1); ctx.lineTo(hx+4, hy+1); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#b85050';
+  ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(hx, hy+5); ctx.quadraticCurveTo(hx-7, hy+12, hx-6, hy+11); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx, hy+5); ctx.quadraticCurveTo(hx+7, hy+12, hx+6, hy+11); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(hx-5,hy+3); ctx.lineTo(hx-30,hy+0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx-5,hy+6); ctx.lineTo(hx-30,hy+7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx-5,hy+8); ctx.lineTo(hx-28,hy+13); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx+5,hy+3); ctx.lineTo(hx+30,hy+0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx+5,hy+6); ctx.lineTo(hx+30,hy+7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx+5,hy+8); ctx.lineTo(hx+28,hy+13); ctx.stroke();
+  ctx.strokeStyle = 'rgba(160,85,0,0.3)';
+  ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(hx-9,hy-26); ctx.quadraticCurveTo(hx-7,hy-18,hx-8,hy-12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx,hy-28); ctx.quadraticCurveTo(hx,hy-18,hx,hy-12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx+9,hy-26); ctx.quadraticCurveTo(hx+7,hy-18,hx+8,hy-12); ctx.stroke();
+  ctx.restore();
+}
+function update() {
+  cat.x += cat.speed * cat.dir;
+  if (cat.x > W - cat.bodyW - 50) cat.dir = -1;
+  if (cat.x < 20) cat.dir = 1;
+  cat.tick++;
+  if (cat.tick >= 8) { cat.tick = 0; cat.frame = (cat.frame + 1) % 4; }
+  ball.vy += GRAVITY;
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+  if (ball.y >= GROUND - ball.r) {
+    ball.y = GROUND - ball.r;
+    ball.vy *= -BOUNCE;
+    if (Math.abs(ball.vy) < 1) ball.vy = 0;
+  }
+  if (ball.x - ball.r <= 0) { ball.x = ball.r; ball.vx *= -1; }
+  if (ball.x + ball.r >= W) { ball.x = W - ball.r; ball.vx *= -1; }
+  const pawX = cat.x + cat.bodyW/2 + cat.dir * 38;
+  if (Math.abs(pawX - ball.x) < 38 && ball.y > GROUND - 90) {
+    ball.vx = cat.dir * (4 + Math.random() * 3);
+    ball.vy = -(3.5 + Math.random() * 3);
+  }
+}
+function loop() {
+  update();
+  ctx.clearRect(0, 0, W, H);
+  drawBg();
+  drawBall();
+  drawCat(cat.x, cat.dir, cat.frame);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
